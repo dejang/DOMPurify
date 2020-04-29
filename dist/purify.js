@@ -59,8 +59,6 @@
   var regExpTest = unapply(RegExp.prototype.test);
   var regExpCreate = unconstruct(RegExp);
 
-  var typeErrorCreate = unconstruct(TypeError);
-
   function unapply(func) {
     return function (thisArg) {
       for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
@@ -79,6 +77,15 @@
 
       return construct(func, args);
     };
+  }
+
+  function toString(arg) {
+    try {
+      return '' + arg;
+      // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      return '';
+    }
   }
 
   /* Add properties to a lookup table */
@@ -970,15 +977,7 @@
 
       /* Stringify, in case dirty is an object */
       if (typeof dirty !== 'string' && !_isNode(dirty)) {
-        // eslint-disable-next-line no-negated-condition
-        if (typeof dirty.toString !== 'function') {
-          throw typeErrorCreate('toString is not a function');
-        } else {
-          dirty = dirty.toString();
-          if (typeof dirty !== 'string') {
-            throw typeErrorCreate('dirty is not a string, aborting');
-          }
-        }
+        dirty = toString(dirty);
       }
 
       /* Check we can run. Otherwise fall back or ignore */

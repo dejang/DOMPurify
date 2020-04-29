@@ -53,6 +53,15 @@ export function unconstruct(func) {
   return (...args) => construct(func, args);
 }
 
+export function toString(arg) {
+  try {
+    return `${arg}`;
+    // eslint-disable-next-line no-unused-vars
+  } catch (error) {
+    return '';
+  }
+}
+
 /* Add properties to a lookup table */
 export function addToSet(set, array) {
   if (setPrototypeOf) {

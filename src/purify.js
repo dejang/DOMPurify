@@ -12,6 +12,7 @@ import {
   arrayPop,
   arrayPush,
   arraySlice,
+  toString,
   stringMatch,
   stringReplace,
   stringToLowerCase,
@@ -19,7 +20,6 @@ import {
   stringTrim,
   regExpTest,
   regExpCreate,
-  typeErrorCreate,
 } from './utils';
 
 const getGlobal = () => (typeof window === 'undefined' ? null : window);
@@ -1018,15 +1018,7 @@ function createDOMPurify(window = getGlobal()) {
 
     /* Stringify, in case dirty is an object */
     if (typeof dirty !== 'string' && !_isNode(dirty)) {
-      // eslint-disable-next-line no-negated-condition
-      if (typeof dirty.toString !== 'function') {
-        throw typeErrorCreate('toString is not a function');
-      } else {
-        dirty = dirty.toString();
-        if (typeof dirty !== 'string') {
-          throw typeErrorCreate('dirty is not a string, aborting');
-        }
-      }
+      dirty = toString(dirty);
     }
 
     /* Check we can run. Otherwise fall back or ignore */
