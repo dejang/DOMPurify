@@ -1,6 +1,6 @@
 const { hasOwnProperty, setPrototypeOf, isFrozen, keys: objectKeys } = Object;
 
-let { freeze, seal } = Object; // eslint-disable-line import/no-mutable-exports
+let { freeze, seal, getOwnPropertyDescriptor } = Object; // eslint-disable-line import/no-mutable-exports
 let { apply, construct } = typeof Reflect !== 'undefined' && Reflect;
 
 if (!apply) {
@@ -107,6 +107,7 @@ export {
   arraySlice,
   // Object
   freeze,
+  getOwnPropertyDescriptor,
   hasOwnProperty,
   isFrozen,
   objectKeys,

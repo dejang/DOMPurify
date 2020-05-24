@@ -7,7 +7,8 @@ var hasOwnProperty = Object.hasOwnProperty,
     isFrozen = Object.isFrozen,
     objectKeys = Object.keys;
 var freeze = Object.freeze,
-    seal = Object.seal; // eslint-disable-line import/no-mutable-exports
+    seal = Object.seal,
+    getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor; // eslint-disable-line import/no-mutable-exports
 
 var _ref = typeof Reflect !== 'undefined' && Reflect,
     apply = _ref.apply,
@@ -149,6 +150,166 @@ var IS_SCRIPT_OR_DATA = seal(/^(?:\w+script|data):/i);
 var ATTR_WHITESPACE = seal(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205f\u3000]/g // eslint-disable-line no-control-regex
 );
 
+/**
+ *
+ * @param {Object} NodeProto
+ * @returns {Object}
+ */
+function nodeUtils(globalWindowObject) {
+  var proto = globalWindowObject.Node.prototype;
+
+  var nodeChildNodesGetter = unapply(getOwnPropertyDescriptor(proto, 'childNodes').get);
+  var nodeCloneNode = unapply(proto.cloneNode);
+  var nodeInsertBefore = unapply(proto.insertBefore);
+
+  var nodeOwnerDocumentGetter = unapply(getOwnPropertyDescriptor(proto, 'ownerDocument').get);
+  var nodeNameGetter = unapply(getOwnPropertyDescriptor(proto, 'nodeName').get);
+  var nodeParentNodeGetter = unapply(getOwnPropertyDescriptor(proto, 'parentNode').get);
+  var nodeRemoveChild = unapply(proto.removeChild);
+  var nodeTypeGetter = unapply(getOwnPropertyDescriptor(proto, 'nodeType').get);
+
+  return {
+    nodeChildNodesGetter: nodeChildNodesGetter,
+    nodeCloneNode: nodeCloneNode,
+    nodeInsertBefore: nodeInsertBefore,
+    nodeOwnerDocumentGetter: nodeOwnerDocumentGetter,
+    nodeNameGetter: nodeNameGetter,
+    nodeParentNodeGetter: nodeParentNodeGetter,
+    nodeRemoveChild: nodeRemoveChild,
+    nodeTypeGetter: nodeTypeGetter
+  };
+}
+
+function documentUtils(globalWindowObject) {
+  var proto = globalWindowObject.Document.prototype;
+
+  var documentBodyGetter = unapply(getOwnPropertyDescriptor(proto, 'body').get);
+  var documentCreateDocumentFragment = unapply(proto.createDocumentFragment);
+  var documentCreateElement = unapply(proto.createElement);
+  var documentCreateNodeIterator = unapply(proto.createNodeIterator);
+  var documentCreateTextNode = unapply(proto.createTextNode);
+
+  var documentCurrentScriptGetter = unapply(getOwnPropertyDescriptor(proto, 'currentScript').get);
+
+  var documentElementGetter = unapply(getOwnPropertyDescriptor(proto, 'documentElement').get);
+
+  var documentGetElementsByTagName = unapply(proto.getElementsByTagName);
+
+  var documentImplementationGetter = unapply(getOwnPropertyDescriptor(proto, 'implementation').get);
+
+  var documentImportNode = unapply(proto.importNode);
+
+  var documentModeDescriptor = getOwnPropertyDescriptor(proto, 'documentMode');
+  var documentModeGetter = documentModeDescriptor ? unapply(documentModeDescriptor.get) : function () {};
+
+  var documentQuerySelector = unapply(proto.querySelector);
+  return {
+    documentBodyGetter: documentBodyGetter,
+    documentCreateDocumentFragment: documentCreateDocumentFragment,
+    documentCreateElement: documentCreateElement,
+    documentCreateNodeIterator: documentCreateNodeIterator,
+    documentCreateTextNode: documentCreateTextNode,
+    documentCurrentScriptGetter: documentCurrentScriptGetter,
+    documentElementGetter: documentElementGetter,
+    documentGetElementsByTagName: documentGetElementsByTagName,
+    documentImplementationGetter: documentImplementationGetter,
+    documentImportNode: documentImportNode,
+    documentModeGetter: documentModeGetter,
+    documentQuerySelector: documentQuerySelector
+  };
+}
+
+function htmlElements(globalWindowObject) {
+  var HTMLTemplateElement = globalWindowObject.HTMLTemplateElement;
+
+
+  var templateContentGetter = unapply(getOwnPropertyDescriptor(HTMLTemplateElement.prototype, 'content').get);
+
+  return {
+    templateContentGetter: templateContentGetter
+  };
+}
+
+function elementUtils(globalWindowObject) {
+  var proto = globalWindowObject.Element.prototype;
+
+  var elementFirstElementChildGetter = unapply(getOwnPropertyDescriptor(proto, 'firstElementChild').get);
+
+  var elementGetAttribute = unapply(proto.getAttribute);
+  var elementGetAttributeNode = unapply(proto.getAttributeNode);
+  var elementHasAttribute = unapply(proto.hasAttribute);
+
+  var innerHTMLdescriptor = getOwnPropertyDescriptor(proto, 'innerHTML');
+  var elementInnerHTMLGetter = unapply(innerHTMLdescriptor.get);
+  var elementInnerHTMLSetter = unapply(innerHTMLdescriptor.set);
+
+  var elementInsertAdjacentHTML = unapply(proto.insertAdjacentHTML);
+
+  var outerHTMLDescriptor = getOwnPropertyDescriptor(proto, 'outerHTML');
+  var elementOuterHTMLSetter = unapply(outerHTMLDescriptor.set);
+  var elementOuterHTMLGetter = unapply(outerHTMLDescriptor.get);
+
+  var elementQuerySelectorAll = unapply(proto.querySelectorAll);
+  var elementRemoveAttribute = unapply(proto.removeAttribute);
+
+  return {
+    elementFirstElementChildGetter: elementFirstElementChildGetter,
+    elementGetAttribute: elementGetAttribute,
+    elementGetAttributeNode: elementGetAttributeNode,
+    elementHasAttribute: elementHasAttribute,
+    elementInnerHTMLGetter: elementInnerHTMLGetter,
+    elementInnerHTMLSetter: elementInnerHTMLSetter,
+    elementInsertAdjacentHTML: elementInsertAdjacentHTML,
+    elementOuterHTMLGetter: elementOuterHTMLGetter,
+    elementOuterHTMLSetter: elementOuterHTMLSetter,
+    elementQuerySelectorAll: elementQuerySelectorAll,
+    elementRemoveAttribute: elementRemoveAttribute
+  };
+}
+
+function domImplementation(globalWindowObject) {
+  var proto = globalWindowObject.DOMImplementation.prototype;
+
+  var domImplementationCreateHTMLDocument = unapply(proto.createHTMLDocument);
+
+  return { domImplementationCreateHTMLDocument: domImplementationCreateHTMLDocument };
+}
+
+function domParser(globalWindowObject) {
+  var DOMParser = globalWindowObject.DOMParser;
+
+
+  if (!DOMParser) {
+    return null;
+  }
+
+  var proto = DOMParser.prototype;
+
+  var domParserCreate = unconstruct(DOMParser);
+  var domParserParseFromString = unapply(proto.parseFromString);
+
+  return {
+    domParserCreate: domParserCreate,
+    domParserParseFromString: domParserParseFromString
+  };
+}
+
+function factoryDOMUtils() {
+  var utilObject = void 0;
+
+  return function (globalWindowObject) {
+    if (utilObject) {
+      return utilObject;
+    }
+
+    utilObject = Object.assign({}, documentUtils(globalWindowObject), domImplementation(globalWindowObject), elementUtils(globalWindowObject), htmlElements(globalWindowObject), nodeUtils(globalWindowObject), domParser(globalWindowObject));
+
+    return utilObject;
+  };
+}
+
+var initializeDOMUtils = factoryDOMUtils();
+
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _toConsumableArray$1(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
@@ -173,6 +334,8 @@ var _createTrustedTypesPolicy = function _createTrustedTypesPolicy(trustedTypes,
   // Allow the callers to control the unique policy name
   // by adding a data-tt-policy-suffix to the script element with the DOMPurify.
   // Policy creation with duplicate names throws in Trusted Types.
+  // TODO: revisit this when Trusted Types becomes a standard
+  //          - need to add prototype poisoning protection
   var suffix = null;
   var ATTR_NAME = 'data-tt-policy-suffix';
   if (document.currentScript && document.currentScript.hasAttribute(ATTR_NAME)) {
@@ -223,6 +386,8 @@ function createDOMPurify() {
     return DOMPurify;
   }
 
+  var domUtil = initializeDOMUtils(window);
+
   var originalDocument = window.document;
   var removeTitle = false;
 
@@ -234,9 +399,7 @@ function createDOMPurify() {
       _window$NamedNodeMap = window.NamedNodeMap,
       NamedNodeMap = _window$NamedNodeMap === undefined ? window.NamedNodeMap || window.MozNamedAttrMap : _window$NamedNodeMap,
       Text = window.Text,
-      Comment = window.Comment,
-      DOMParser = window.DOMParser,
-      trustedTypes = window.trustedTypes;
+      Comment = window.Comment;
 
   // As per issue #47, the web-components registry is inherited by a
   // new document created via createHTMLDocument. As per the spec
@@ -245,30 +408,39 @@ function createDOMPurify() {
   // document, so we use that as our parent document to ensure nothing
   // is inherited.
 
+  var documentCreateElement = domUtil.documentCreateElement,
+      templateContentGetter = domUtil.templateContentGetter,
+      nodeOwnerDocumentGetter = domUtil.nodeOwnerDocumentGetter;
+
+
   if (typeof HTMLTemplateElement === 'function') {
-    var template = document.createElement('template');
-    if (template.content && template.content.ownerDocument) {
-      document = template.content.ownerDocument;
+    var template = documentCreateElement(document, 'template');
+    var templateContent = templateContentGetter(template);
+    if (templateContent) {
+      var ownerDocument = nodeOwnerDocumentGetter(templateContent);
+      if (ownerDocument) {
+        document = ownerDocument;
+      }
     }
   }
 
-  var trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, originalDocument);
+  // TODO: revisit when Trusted Types becomes a standard
+  var trustedTypesPolicy = _createTrustedTypesPolicy(window.trustedTypes, originalDocument);
   var emptyHTML = trustedTypesPolicy ? trustedTypesPolicy.createHTML('') : '';
 
-  var _document = document,
-      implementation = _document.implementation,
-      createNodeIterator = _document.createNodeIterator,
-      getElementsByTagName = _document.getElementsByTagName,
-      createDocumentFragment = _document.createDocumentFragment;
-  var importNode = originalDocument.importNode;
+  var documentImplementationGetter = domUtil.documentImplementationGetter,
+      documentModeGetter = domUtil.documentModeGetter,
+      domImplementationCreateHTMLDocument = domUtil.domImplementationCreateHTMLDocument;
 
+
+  var implementation = documentImplementationGetter(document);
 
   var hooks = {};
 
   /**
    * Expose whether this browser supports running the full DOMPurify.
    */
-  DOMPurify.isSupported = implementation && typeof implementation.createHTMLDocument !== 'undefined' && document.documentMode !== 9;
+  DOMPurify.isSupported = implementation && typeof domImplementationCreateHTMLDocument(implementation) !== 'undefined' && documentModeGetter(document) !== 9;
 
   var MUSTACHE_EXPR$$1 = MUSTACHE_EXPR,
       ERB_EXPR$$1 = ERB_EXPR,
@@ -375,7 +547,7 @@ function createDOMPurify() {
   /* Ideally, do not touch anything below this line */
   /* ______________________________________________ */
 
-  var formElement = document.createElement('form');
+  var formElement = documentCreateElement(document, 'form');
 
   /**
    * _parseConfig
@@ -498,18 +670,24 @@ function createDOMPurify() {
     CONFIG = cfg;
   };
 
+  var nodeParentNodeGetter = domUtil.nodeParentNodeGetter,
+      nodeRemoveChild = domUtil.nodeRemoveChild,
+      elementOuterHTMLSetter = domUtil.elementOuterHTMLSetter,
+      elementGetAttributeNode = domUtil.elementGetAttributeNode,
+      elementRemoveAttribute = domUtil.elementRemoveAttribute;
   /**
    * _forceRemove
    *
    * @param  {Node} node a DOM node
    */
+
   var _forceRemove = function _forceRemove(node) {
     arrayPush(DOMPurify.removed, { element: node });
     try {
-      // eslint-disable-next-line unicorn/prefer-node-remove
-      node.parentNode.removeChild(node);
+      var parentNode = nodeParentNodeGetter(node);
+      nodeRemoveChild(parentNode, node);
     } catch (_) {
-      node.outerHTML = emptyHTML;
+      elementOuterHTMLSetter(node, emptyHTML);
     }
   };
 
@@ -522,7 +700,7 @@ function createDOMPurify() {
   var _removeAttribute = function _removeAttribute(name, node) {
     try {
       arrayPush(DOMPurify.removed, {
-        attribute: node.getAttributeNode(name),
+        attribute: elementGetAttributeNode(node, name),
         from: node
       });
     } catch (_) {
@@ -532,15 +710,26 @@ function createDOMPurify() {
       });
     }
 
-    node.removeAttribute(name);
+    elementRemoveAttribute(node, name);
   };
 
+  var documentBodyGetter = domUtil.documentBodyGetter,
+      documentCreateTextNode = domUtil.documentCreateTextNode,
+      documentElementGetter = domUtil.documentElementGetter,
+      documentQuerySelector = domUtil.documentQuerySelector,
+      domParserCreate = domUtil.domParserCreate,
+      domParserParseFromString = domUtil.domParserParseFromString,
+      elementFirstElementChildGetter = domUtil.elementFirstElementChildGetter,
+      elementInnerHTMLGetter = domUtil.elementInnerHTMLGetter,
+      nodeChildNodesGetter = domUtil.nodeChildNodesGetter,
+      nodeInsertBefore = domUtil.nodeInsertBefore;
   /**
    * _initDocument
    *
    * @param  {String} dirty a string of dirty markup
    * @return {Document} a DOM, filled with the dirty markup
    */
+
   var _initDocument = function _initDocument(dirty) {
     /* Create a HTML document */
     var doc = void 0;
@@ -558,7 +747,7 @@ function createDOMPurify() {
     var dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
     /* Use the DOMParser API by default, fallback later if needs be */
     try {
-      doc = new DOMParser().parseFromString(dirtyPayload, 'text/html');
+      doc = domParserParseFromString(domParserCreate(), dirtyPayload, 'text/html');
     } catch (_) {}
 
     /* Remove title to fix a mXSS bug in older MS Edge */
@@ -567,21 +756,25 @@ function createDOMPurify() {
     }
 
     /* Use createHTMLDocument in case DOMParser is not available */
-    if (!doc || !doc.documentElement) {
-      doc = implementation.createHTMLDocument('');
-      var _doc = doc,
-          body = _doc.body;
-
-      body.parentNode.removeChild(body.parentNode.firstElementChild);
-      body.outerHTML = dirtyPayload;
+    if (!doc || !documentElementGetter(doc)) {
+      doc = domImplementationCreateHTMLDocument(implementation, '');
+      var body = documentBodyGetter(doc);
+      var parentNode = nodeParentNodeGetter(body);
+      nodeRemoveChild(parentNode, elementFirstElementChildGetter(parentNode));
+      elementOuterHTMLSetter(body, dirtyPayload);
     }
 
     if (dirty && leadingWhitespace) {
-      doc.body.insertBefore(document.createTextNode(leadingWhitespace), doc.body.childNodes[0] || null);
+      var _body = documentBodyGetter(doc);
+      var textNode = documentCreateTextNode(document, leadingWhitespace);
+      var node = nodeChildNodesGetter(_body)[0] || null;
+      nodeInsertBefore(_body, textNode, node);
     }
 
     /* Work on whole document or just its body */
-    return getElementsByTagName.call(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
+    var documentGetElementsByTagName = domUtil.documentGetElementsByTagName;
+
+    return documentGetElementsByTagName(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
   };
 
   /* Here we test for a broken feature in Edge that might cause mXSS */
@@ -589,7 +782,7 @@ function createDOMPurify() {
     (function () {
       try {
         var doc = _initDocument('<x/><title>&lt;/title&gt;&lt;img&gt;');
-        if (regExpTest(/<\/title/, doc.querySelector('title').innerHTML)) {
+        if (regExpTest(/<\/title/, elementInnerHTMLGetter(documentQuerySelector(doc, 'title')))) {
           removeTitle = true;
         }
       } catch (_) {}
@@ -602,8 +795,10 @@ function createDOMPurify() {
    * @param  {Document} root document/fragment to create iterator for
    * @return {Iterator} iterator instance
    */
+  var documentCreateNodeIterator = domUtil.documentCreateNodeIterator;
+
   var _createIterator = function _createIterator(root) {
-    return createNodeIterator.call(root.ownerDocument || root, root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, function () {
+    return documentCreateNodeIterator(nodeOwnerDocumentGetter(root) || root, root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT, function () {
       return NodeFilter.FILTER_ACCEPT;
     }, false);
   };
@@ -654,6 +849,9 @@ function createDOMPurify() {
     });
   };
 
+  var elementInsertAdjacentHTML = domUtil.elementInsertAdjacentHTML,
+      elementQuerySelectorAll = domUtil.elementQuerySelectorAll,
+      nodeCloneNode = domUtil.nodeCloneNode;
   /**
    * _sanitizeElements
    *
@@ -665,6 +863,7 @@ function createDOMPurify() {
    * @return  {Boolean} true if node was killed, false if left alive
    */
   // eslint-disable-next-line complexity
+
   var _sanitizeElements = function _sanitizeElements(currentNode) {
     var content = void 0;
 
@@ -687,7 +886,7 @@ function createDOMPurify() {
     });
 
     /* Take care of an mXSS pattern using p, br inside svg, math */
-    if ((tagName === 'svg' || tagName === 'math') && currentNode.querySelectorAll('p, br').length !== 0) {
+    if ((tagName === 'svg' || tagName === 'math') && elementQuerySelectorAll(currentNode, 'p, br').length !== 0) {
       _forceRemove(currentNode);
       return true;
     }
@@ -697,8 +896,8 @@ function createDOMPurify() {
       /* Keep content except for black-listed elements */
       if (KEEP_CONTENT && !FORBID_CONTENTS[tagName] && typeof currentNode.insertAdjacentHTML === 'function') {
         try {
-          var htmlToInsert = currentNode.innerHTML;
-          currentNode.insertAdjacentHTML('AfterEnd', trustedTypesPolicy ? trustedTypesPolicy.createHTML(htmlToInsert) : htmlToInsert);
+          var htmlToInsert = elementInnerHTMLGetter(currentNode);
+          elementInsertAdjacentHTML(currentNode, 'AfterEnd', trustedTypesPolicy ? trustedTypesPolicy.createHTML(htmlToInsert) : htmlToInsert);
         } catch (_) {}
       }
 
@@ -719,7 +918,7 @@ function createDOMPurify() {
 
     /* Convert markup to cover jQuery behavior */
     if (SAFE_FOR_JQUERY && !currentNode.firstElementChild && (!currentNode.content || !currentNode.content.firstElementChild) && regExpTest(/</g, currentNode.textContent)) {
-      arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+      arrayPush(DOMPurify.removed, { element: nodeCloneNode(currentNode) });
       if (currentNode.innerHTML) {
         currentNode.innerHTML = stringReplace(currentNode.innerHTML, /</g, '&lt;');
       } else {
@@ -734,7 +933,7 @@ function createDOMPurify() {
       content = stringReplace(content, MUSTACHE_EXPR$$1, ' ');
       content = stringReplace(content, ERB_EXPR$$1, ' ');
       if (currentNode.textContent !== content) {
-        arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+        arrayPush(DOMPurify.removed, { element: nodeCloneNode(currentNode) });
         currentNode.textContent = content;
       }
     }
@@ -1072,10 +1271,13 @@ function createDOMPurify() {
       return dirty;
     }
 
+    var documentCreateDocumentFragment = domUtil.documentCreateDocumentFragment,
+        documentImportNode = domUtil.documentImportNode;
     /* Return sanitized string or DOM */
+
     if (RETURN_DOM) {
       if (RETURN_DOM_FRAGMENT) {
-        returnNode = createDocumentFragment.call(body.ownerDocument);
+        returnNode = documentCreateDocumentFragment(nodeOwnerDocumentGetter(body));
 
         while (body.firstChild) {
           // eslint-disable-next-line unicorn/prefer-node-append
@@ -1093,7 +1295,7 @@ function createDOMPurify() {
           The state that is cloned by importNode() is explicitly defined
           by the specs.
         */
-        returnNode = importNode.call(originalDocument, returnNode, true);
+        returnNode = documentImportNode(originalDocument, returnNode, true);
       }
 
       return returnNode;

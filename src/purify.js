@@ -22,6 +22,8 @@ import {
   typeErrorCreate,
 } from './utils';
 
+import { initializeDOMUtils } from './dom-utils';
+
 const getGlobal = () => (typeof window === 'undefined' ? null : window);
 
 /**
@@ -43,6 +45,8 @@ const _createTrustedTypesPolicy = function (trustedTypes, document) {
   // Allow the callers to control the unique policy name
   // by adding a data-tt-policy-suffix to the script element with the DOMPurify.
   // Policy creation with duplicate names throws in Trusted Types.
+  // TODO: revisit this when Trusted Types becomes a standard
+  //          - need to add prototype poisoning protection
   let suffix = null;
   const ATTR_NAME = 'data-tt-policy-suffix';
   if (
@@ -94,6 +98,8 @@ function createDOMPurify(window = getGlobal()) {
     return DOMPurify;
   }
 
+  const domUtil = initializeDOMUtils(window);
+
   const originalDocument = window.document;
   let removeTitle = false;
 
@@ -106,8 +112,6 @@ function createDOMPurify(window = getGlobal()) {
     NamedNodeMap = window.NamedNodeMap || window.MozNamedAttrMap,
     Text,
     Comment,
-    DOMParser,
-    trustedTypes,
   } = window;
 
   // As per issue #47, the web-components registry is inherited by a
@@ -116,26 +120,38 @@ function createDOMPurify(window = getGlobal()) {
   // a new empty registry is used when creating a template contents owner
   // document, so we use that as our parent document to ensure nothing
   // is inherited.
+
+  const {
+    documentCreateElement,
+    templateContentGetter,
+    nodeOwnerDocumentGetter,
+  } = domUtil;
+
   if (typeof HTMLTemplateElement === 'function') {
-    const template = document.createElement('template');
-    if (template.content && template.content.ownerDocument) {
-      document = template.content.ownerDocument;
+    const template = documentCreateElement(document, 'template');
+    const templateContent = templateContentGetter(template);
+    if (templateContent) {
+      const ownerDocument = nodeOwnerDocumentGetter(templateContent);
+      if (ownerDocument) {
+        document = ownerDocument;
+      }
     }
   }
 
+  // TODO: revisit when Trusted Types becomes a standard
   const trustedTypesPolicy = _createTrustedTypesPolicy(
-    trustedTypes,
+    window.trustedTypes,
     originalDocument
   );
   const emptyHTML = trustedTypesPolicy ? trustedTypesPolicy.createHTML('') : '';
 
   const {
-    implementation,
-    createNodeIterator,
-    getElementsByTagName,
-    createDocumentFragment,
-  } = document;
-  const { importNode } = originalDocument;
+    documentImplementationGetter,
+    documentModeGetter,
+    domImplementationCreateHTMLDocument,
+  } = domUtil;
+
+  const implementation = documentImplementationGetter(document);
 
   let hooks = {};
 
@@ -144,8 +160,9 @@ function createDOMPurify(window = getGlobal()) {
    */
   DOMPurify.isSupported =
     implementation &&
-    typeof implementation.createHTMLDocument !== 'undefined' &&
-    document.documentMode !== 9;
+    typeof domImplementationCreateHTMLDocument(implementation) !==
+      'undefined' &&
+    documentModeGetter(document) !== 9;
 
   const {
     MUSTACHE_EXPR,
@@ -311,7 +328,7 @@ function createDOMPurify(window = getGlobal()) {
   /* Ideally, do not touch anything below this line */
   /* ______________________________________________ */
 
-  const formElement = document.createElement('form');
+  const formElement = documentCreateElement(document, 'form');
 
   /**
    * _parseConfig
@@ -446,6 +463,13 @@ function createDOMPurify(window = getGlobal()) {
     CONFIG = cfg;
   };
 
+  const {
+    nodeParentNodeGetter,
+    nodeRemoveChild,
+    elementOuterHTMLSetter,
+    elementGetAttributeNode,
+    elementRemoveAttribute,
+  } = domUtil;
   /**
    * _forceRemove
    *
@@ -454,10 +478,10 @@ function createDOMPurify(window = getGlobal()) {
   const _forceRemove = function (node) {
     arrayPush(DOMPurify.removed, { element: node });
     try {
-      // eslint-disable-next-line unicorn/prefer-node-remove
-      node.parentNode.removeChild(node);
+      const parentNode = nodeParentNodeGetter(node);
+      nodeRemoveChild(parentNode, node);
     } catch (_) {
-      node.outerHTML = emptyHTML;
+      elementOuterHTMLSetter(node, emptyHTML);
     }
   };
 
@@ -470,7 +494,7 @@ function createDOMPurify(window = getGlobal()) {
   const _removeAttribute = function (name, node) {
     try {
       arrayPush(DOMPurify.removed, {
-        attribute: node.getAttributeNode(name),
+        attribute: elementGetAttributeNode(node, name),
         from: node,
       });
     } catch (_) {
@@ -480,9 +504,21 @@ function createDOMPurify(window = getGlobal()) {
       });
     }
 
-    node.removeAttribute(name);
+    elementRemoveAttribute(node, name);
   };
 
+  const {
+    documentBodyGetter,
+    documentCreateTextNode,
+    documentElementGetter,
+    documentQuerySelector,
+    domParserCreate,
+    domParserParseFromString,
+    elementFirstElementChildGetter,
+    elementInnerHTMLGetter,
+    nodeChildNodesGetter,
+    nodeInsertBefore,
+  } = domUtil;
   /**
    * _initDocument
    *
@@ -508,7 +544,11 @@ function createDOMPurify(window = getGlobal()) {
       : dirty;
     /* Use the DOMParser API by default, fallback later if needs be */
     try {
-      doc = new DOMParser().parseFromString(dirtyPayload, 'text/html');
+      doc = domParserParseFromString(
+        domParserCreate(),
+        dirtyPayload,
+        'text/html'
+      );
     } catch (_) {}
 
     /* Remove title to fix a mXSS bug in older MS Edge */
@@ -517,22 +557,27 @@ function createDOMPurify(window = getGlobal()) {
     }
 
     /* Use createHTMLDocument in case DOMParser is not available */
-    if (!doc || !doc.documentElement) {
-      doc = implementation.createHTMLDocument('');
-      const { body } = doc;
-      body.parentNode.removeChild(body.parentNode.firstElementChild);
-      body.outerHTML = dirtyPayload;
+    if (!doc || !documentElementGetter(doc)) {
+      doc = domImplementationCreateHTMLDocument(implementation, '');
+      const body = documentBodyGetter(doc);
+      const parentNode = nodeParentNodeGetter(body);
+      nodeRemoveChild(parentNode, elementFirstElementChildGetter(parentNode));
+      elementOuterHTMLSetter(body, dirtyPayload);
     }
 
     if (dirty && leadingWhitespace) {
-      doc.body.insertBefore(
-        document.createTextNode(leadingWhitespace),
-        doc.body.childNodes[0] || null
-      );
+      const body = documentBodyGetter(doc);
+      const textNode = documentCreateTextNode(document, leadingWhitespace);
+      const node = nodeChildNodesGetter(body)[0] || null;
+      nodeInsertBefore(body, textNode, node);
     }
 
     /* Work on whole document or just its body */
-    return getElementsByTagName.call(doc, WHOLE_DOCUMENT ? 'html' : 'body')[0];
+    const { documentGetElementsByTagName } = domUtil;
+    return documentGetElementsByTagName(
+      doc,
+      WHOLE_DOCUMENT ? 'html' : 'body'
+    )[0];
   };
 
   /* Here we test for a broken feature in Edge that might cause mXSS */
@@ -540,7 +585,12 @@ function createDOMPurify(window = getGlobal()) {
     (function () {
       try {
         const doc = _initDocument('<x/><title>&lt;/title&gt;&lt;img&gt;');
-        if (regExpTest(/<\/title/, doc.querySelector('title').innerHTML)) {
+        if (
+          regExpTest(
+            /<\/title/,
+            elementInnerHTMLGetter(documentQuerySelector(doc, 'title'))
+          )
+        ) {
           removeTitle = true;
         }
       } catch (_) {}
@@ -553,9 +603,10 @@ function createDOMPurify(window = getGlobal()) {
    * @param  {Document} root document/fragment to create iterator for
    * @return {Iterator} iterator instance
    */
+  const { documentCreateNodeIterator } = domUtil;
   const _createIterator = function (root) {
-    return createNodeIterator.call(
-      root.ownerDocument || root,
+    return documentCreateNodeIterator(
+      nodeOwnerDocumentGetter(root) || root,
       root,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT | NodeFilter.SHOW_TEXT,
       () => {
@@ -624,6 +675,11 @@ function createDOMPurify(window = getGlobal()) {
     });
   };
 
+  const {
+    elementInsertAdjacentHTML,
+    elementQuerySelectorAll,
+    nodeCloneNode,
+  } = domUtil;
   /**
    * _sanitizeElements
    *
@@ -659,7 +715,7 @@ function createDOMPurify(window = getGlobal()) {
     /* Take care of an mXSS pattern using p, br inside svg, math */
     if (
       (tagName === 'svg' || tagName === 'math') &&
-      currentNode.querySelectorAll('p, br').length !== 0
+      elementQuerySelectorAll(currentNode, 'p, br').length !== 0
     ) {
       _forceRemove(currentNode);
       return true;
@@ -674,8 +730,9 @@ function createDOMPurify(window = getGlobal()) {
         typeof currentNode.insertAdjacentHTML === 'function'
       ) {
         try {
-          const htmlToInsert = currentNode.innerHTML;
-          currentNode.insertAdjacentHTML(
+          const htmlToInsert = elementInnerHTMLGetter(currentNode);
+          elementInsertAdjacentHTML(
+            currentNode,
             'AfterEnd',
             trustedTypesPolicy
               ? trustedTypesPolicy.createHTML(htmlToInsert)
@@ -712,7 +769,7 @@ function createDOMPurify(window = getGlobal()) {
       (!currentNode.content || !currentNode.content.firstElementChild) &&
       regExpTest(/</g, currentNode.textContent)
     ) {
-      arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+      arrayPush(DOMPurify.removed, { element: nodeCloneNode(currentNode) });
       if (currentNode.innerHTML) {
         currentNode.innerHTML = stringReplace(
           currentNode.innerHTML,
@@ -735,7 +792,7 @@ function createDOMPurify(window = getGlobal()) {
       content = stringReplace(content, MUSTACHE_EXPR, ' ');
       content = stringReplace(content, ERB_EXPR, ' ');
       if (currentNode.textContent !== content) {
-        arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
+        arrayPush(DOMPurify.removed, { element: nodeCloneNode(currentNode) });
         currentNode.textContent = content;
       }
     }
@@ -1138,10 +1195,13 @@ function createDOMPurify(window = getGlobal()) {
       return dirty;
     }
 
+    const { documentCreateDocumentFragment, documentImportNode } = domUtil;
     /* Return sanitized string or DOM */
     if (RETURN_DOM) {
       if (RETURN_DOM_FRAGMENT) {
-        returnNode = createDocumentFragment.call(body.ownerDocument);
+        returnNode = documentCreateDocumentFragment(
+          nodeOwnerDocumentGetter(body)
+        );
 
         while (body.firstChild) {
           // eslint-disable-next-line unicorn/prefer-node-append
@@ -1159,7 +1219,7 @@ function createDOMPurify(window = getGlobal()) {
           The state that is cloned by importNode() is explicitly defined
           by the specs.
         */
-        returnNode = importNode.call(originalDocument, returnNode, true);
+        returnNode = documentImportNode(originalDocument, returnNode, true);
       }
 
       return returnNode;
